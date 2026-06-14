@@ -45,3 +45,6 @@ next-env.d.ts
 
 # persistent user data (passwords, sessions, progress)
 /persistent_data
+
+# backup files
+*.bak
