@@ -14,6 +14,9 @@ export default function DashboardPage() {
   useEffect(() => {
     let mounted = true;
     (async () => {
+      // Veritabanının hazır olması için kısa bekleme (sayfa yenilemede race condition önlemek)
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
       await getOrCreateUserStats();
       await seedIfEmpty();
       if (mounted) setReady(true);
@@ -32,7 +35,8 @@ export default function DashboardPage() {
     []
   );
 
-  if (!ready || stats === undefined) {
+  // stats === null ise kayıt henüz oluşturuluyor demektir, loading göster
+  if (!ready || stats === undefined || stats === null) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
