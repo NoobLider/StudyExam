@@ -7,10 +7,9 @@ import {
 } from "recharts";
 import { Flame, Star, CalendarCheck, TrendingUp } from "lucide-react";
 import { db, getOrCreateUserStats, type UserStats, type ProgressItem, type ContentItem, type StudySession } from "@/lib/db";
-import { useAuth } from "@/components/features/AuthProvider";
+import { fetchSession } from "@/lib/auth";
 
 export default function StatsPage() {
-  const { loading: authLoading } = useAuth();
   const [ready, setReady] = useState(false);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [allProgress, setAllProgress] = useState<ProgressItem[]>([]);
@@ -18,12 +17,16 @@ export default function StatsPage() {
   const [sessions, setSessions] = useState<StudySession[]>([]);
 
   useEffect(() => {
-    if (authLoading) return;
-    
     let mounted = true;
     
     async function loadData() {
-      await new Promise(resolve => setTimeout(resolve, 300));
+      let user = await fetchSession();
+      let attempts = 0;
+      while (!user && attempts < 3) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        user = await fetchSession();
+        attempts++;
+      }
       
       if (!mounted) return;
       
@@ -50,7 +53,7 @@ export default function StatsPage() {
     loadData();
     
     return () => { mounted = false; };
-  }, [authLoading]);
+  }, []);
 
   // Activity heatmap
   const heatmapData = useMemo(() => {

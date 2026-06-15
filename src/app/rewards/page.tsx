@@ -4,20 +4,23 @@ import { useEffect, useState } from "react";
 import { Lock } from "lucide-react";
 import { db, getOrCreateUserStats, type UserStats } from "@/lib/db";
 import { BADGES, xpProgressPercent, xpForLevel, LEVEL_THRESHOLDS } from "@/lib/gamification";
-import { useAuth } from "@/components/features/AuthProvider";
+import { fetchSession } from "@/lib/auth";
 
 export default function RewardsPage() {
-  const { loading: authLoading } = useAuth();
   const [ready, setReady] = useState(false);
   const [stats, setStats] = useState<UserStats | null>(null);
 
   useEffect(() => {
-    if (authLoading) return;
-    
     let mounted = true;
     
     async function loadData() {
-      await new Promise(resolve => setTimeout(resolve, 300));
+      let user = await fetchSession();
+      let attempts = 0;
+      while (!user && attempts < 3) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        user = await fetchSession();
+        attempts++;
+      }
       
       if (!mounted) return;
       
@@ -37,7 +40,7 @@ export default function RewardsPage() {
     loadData();
     
     return () => { mounted = false; };
-  }, [authLoading]);
+  }, []);
 
   if (!ready || stats === null) {
     return (
