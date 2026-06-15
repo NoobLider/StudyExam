@@ -147,7 +147,11 @@ export default function StatsPage() {
                 <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65} label={({ name, percent }) => `${name} ${Math.round((percent ?? 0) * 100)}%`} labelLine={false}>
                   {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
                 </Pie>
-                <Tooltip formatter={(v) => [v, "Soru"]} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '6px' }}
+                  itemStyle={{ color: 'var(--foreground)' }}
+                  formatter={(v) => [v, "Soru"]}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -161,7 +165,12 @@ export default function StatsPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="topic" tick={{ fontSize: 9 }} interval={0} angle={-30} textAnchor="end" height={48} />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
-                <Tooltip formatter={(v) => [`${v}%`, "Başarı"]} labelFormatter={(_, p) => p[0]?.payload?.fullTopic ?? ""} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '6px' }}
+                  itemStyle={{ color: 'var(--foreground)' }}
+                  formatter={(v) => [`${v}%`, "Başarı"]}
+                  labelFormatter={(_, p) => p[0]?.payload?.fullTopic ?? ""}
+                />
                 <Bar dataKey="oran" fill="var(--primary)" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -198,8 +207,11 @@ export default function StatsPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="date" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Line type="monotone" dataKey="xp" stroke="var(--primary)" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+              <Tooltip
+                  contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '6px' }}
+                  itemStyle={{ color: 'var(--foreground)' }}
+                />
+                <Line type="monotone" dataKey="xp" stroke="var(--primary)" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
