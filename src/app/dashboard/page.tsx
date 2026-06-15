@@ -7,6 +7,7 @@ import { Brain, BookOpen, Flame, Star, Target, TrendingUp, ChevronRight, Clock, 
 import { db, getOrCreateUserStats } from "@/lib/db";
 import { seedIfEmpty } from "@/lib/seedDb";
 import { xpProgressPercent, xpForLevel, BADGES } from "@/lib/gamification";
+import { fetchSession } from "@/lib/auth";
 
 export default function DashboardPage() {
   const [ready, setReady] = useState(false);
@@ -14,8 +15,17 @@ export default function DashboardPage() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      // Veritabanının hazır olması için kısa bekleme (sayfa yenilemede race condition önlemek)
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Önce kullanıcı oturumunu al (cache boşsa API'den çek)
+      let user = await fetchSession();
+      // Oturum alınana kadar bekle (max 3 deneme)
+      let attempts = 0;
+      while (!user && attempts < 3) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        user = await fetchSession();
+        attempts++;
+      }
+      
+      if (!mounted) return;
       
       await getOrCreateUserStats();
       await seedIfEmpty();

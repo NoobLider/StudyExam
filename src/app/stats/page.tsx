@@ -8,6 +8,7 @@ import {
 } from "recharts";
 import { Flame, Star, CalendarCheck, TrendingUp } from "lucide-react";
 import { db, getOrCreateUserStats } from "@/lib/db";
+import { fetchSession } from "@/lib/auth";
 
 export default function StatsPage() {
   const [ready, setReady] = useState(false);
@@ -15,8 +16,15 @@ export default function StatsPage() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      // Veritabanının hazır olması için kısa bekleme (sayfa yenilemede race condition önlemek)
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Önce kullanıcı oturumunu al (cache boşsa API'den çek)
+      let user = await fetchSession();
+      let attempts = 0;
+      while (!user && attempts < 3) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        user = await fetchSession();
+        attempts++;
+      }
+      if (!mounted) return;
       
       await getOrCreateUserStats();
       if (mounted) setReady(true);
