@@ -2,22 +2,25 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useLiveQuery } from "dexie-react-hooks";
 import { Brain, BookOpen, Flame, Star, Target, TrendingUp, ChevronRight, Clock, CalendarCheck } from "lucide-react";
-import { db, getOrCreateUserStats } from "@/lib/db";
+import { db, getOrCreateUserStats, type UserStats, type StudySession } from "@/lib/db";
 import { seedIfEmpty } from "@/lib/seedDb";
 import { xpProgressPercent, xpForLevel, BADGES } from "@/lib/gamification";
 import { fetchSession } from "@/lib/auth";
 
 export default function DashboardPage() {
   const [ready, setReady] = useState(false);
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [contentCount, setContentCount] = useState(0);
+  const [recentSessions, setRecentSessions] = useState<StudySession[]>([]);
+  const [dueCount, setDueCount] = useState(0);
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
-      // Önce kullanıcı oturumunu al (cache boşsa API'den çek)
+    
+    async function loadData() {
+      // Önce kullanıcı oturumunu al
       let user = await fetchSession();
-      // Oturum alınana kadar bekle (max 3 deneme)
       let attempts = 0;
       while (!user && attempts < 3) {
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -25,28 +28,39 @@ export default function DashboardPage() {
         attempts++;
       }
       
-      if (!mounted) return;
+      if (!mounted || !user) return;
       
+      // Veritabanı hazırla
       await getOrCreateUserStats();
       await seedIfEmpty();
-      if (mounted) setReady(true);
-    })();
+      
+      if (!mounted) return;
+      
+      // Manuel veri çekimi
+      const userStatsArr = await db.userStats.toArray();
+      const userStats = userStatsArr[0] ?? null;
+      
+      const content = await db.content.count();
+      
+      const sessions = await db.sessions.orderBy("date").reverse().limit(7).toArray();
+      
+      const due = await db.progress.where("nextReview").belowOrEqual(new Date()).count();
+      
+      if (mounted) {
+        setStats(userStats);
+        setContentCount(content);
+        setRecentSessions(sessions);
+        setDueCount(due);
+        setReady(true);
+      }
+    }
+    
+    loadData();
+    
     return () => { mounted = false; };
   }, []);
 
-  const stats = useLiveQuery(() => db.userStats.toArray().then((arr) => arr[0] ?? null), []);
-  const contentCount = useLiveQuery(() => db.content.count(), []);
-  const recentSessions = useLiveQuery(
-    () => db.sessions.orderBy("date").reverse().limit(7).toArray(),
-    []
-  );
-  const dueCount = useLiveQuery(
-    () => db.progress.where("nextReview").belowOrEqual(new Date()).count(),
-    []
-  );
-
-  // stats === null ise kayıt henüz oluşturuluyor demektir, loading göster
-  if (!ready || stats === undefined || stats === null) {
+  if (!ready || stats === null) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />

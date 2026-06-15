@@ -1,19 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useLiveQuery } from "dexie-react-hooks";
 import { Lock } from "lucide-react";
-import { db, getOrCreateUserStats } from "@/lib/db";
+import { db, getOrCreateUserStats, type UserStats } from "@/lib/db";
 import { BADGES, xpProgressPercent, xpForLevel, LEVEL_THRESHOLDS } from "@/lib/gamification";
 import { fetchSession } from "@/lib/auth";
 
 export default function RewardsPage() {
   const [ready, setReady] = useState(false);
+  const [stats, setStats] = useState<UserStats | null>(null);
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
-      // Önce kullanıcı oturumunu al (cache boşsa API'den çek)
+    
+    async function loadData() {
       let user = await fetchSession();
       let attempts = 0;
       while (!user && attempts < 3) {
@@ -21,18 +21,28 @@ export default function RewardsPage() {
         user = await fetchSession();
         attempts++;
       }
-      if (!mounted) return;
+      
+      if (!mounted || !user) return;
       
       await getOrCreateUserStats();
-      if (mounted) setReady(true);
-    })();
+      
+      if (!mounted) return;
+      
+      const userStatsArr = await db.userStats.toArray();
+      const userStats = userStatsArr[0] ?? null;
+      
+      if (mounted) {
+        setStats(userStats);
+        setReady(true);
+      }
+    }
+    
+    loadData();
+    
     return () => { mounted = false; };
   }, []);
 
-  const stats = useLiveQuery(() => db.userStats.toArray().then((arr) => arr[0] ?? null), []);
-
-  // stats === null ise kayıt henüz oluşturuluyor demektir, loading göster
-  if (!ready || stats === undefined || stats === null) {
+  if (!ready || stats === null) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />

@@ -1,22 +1,25 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useLiveQuery } from "dexie-react-hooks";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { Flame, Star, CalendarCheck, TrendingUp } from "lucide-react";
-import { db, getOrCreateUserStats } from "@/lib/db";
+import { db, getOrCreateUserStats, type UserStats, type ProgressItem, type ContentItem, type StudySession } from "@/lib/db";
 import { fetchSession } from "@/lib/auth";
 
 export default function StatsPage() {
   const [ready, setReady] = useState(false);
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [allProgress, setAllProgress] = useState<ProgressItem[]>([]);
+  const [allContent, setAllContent] = useState<ContentItem[]>([]);
+  const [sessions, setSessions] = useState<StudySession[]>([]);
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
-      // Önce kullanıcı oturumunu al (cache boşsa API'den çek)
+    
+    async function loadData() {
       let user = await fetchSession();
       let attempts = 0;
       while (!user && attempts < 3) {
@@ -24,23 +27,38 @@ export default function StatsPage() {
         user = await fetchSession();
         attempts++;
       }
-      if (!mounted) return;
+      
+      if (!mounted || !user) return;
       
       await getOrCreateUserStats();
-      if (mounted) setReady(true);
-    })();
+      
+      if (!mounted) return;
+      
+      const [userStatsArr, progress, content, sess] = await Promise.all([
+        db.userStats.toArray(),
+        db.progress.toArray(),
+        db.content.toArray(),
+        db.sessions.orderBy("date").reverse().limit(30).toArray()
+      ]);
+      
+      if (mounted) {
+        setStats(userStatsArr[0] ?? null);
+        setAllProgress(progress);
+        setAllContent(content);
+        setSessions(sess);
+        setReady(true);
+      }
+    }
+    
+    loadData();
+    
     return () => { mounted = false; };
   }, []);
 
-  const stats = useLiveQuery(() => db.userStats.toArray().then((arr) => arr[0] ?? null), []);
-  const allProgress = useLiveQuery(() => db.progress.toArray(), []);
-  const allContent = useLiveQuery(() => db.content.toArray(), []);
-  const sessions = useLiveQuery(() => db.sessions.orderBy("date").reverse().limit(30).toArray(), []);
-
-  // Activity heatmap — must be before any early return (Rules of Hooks)
+  // Activity heatmap
   const heatmapData = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const s of sessions ?? []) map[s.date] = (map[s.date] ?? 0) + s.questionsAnswered;
+    for (const s of sessions) map[s.date] = (map[s.date] ?? 0) + s.questionsAnswered;
     const days: { date: string; count: number }[] = [];
     for (let i = 29; i >= 0; i--) {
       const d = new Date(Date.now() - i * 86400000);
@@ -50,8 +68,7 @@ export default function StatsPage() {
     return days;
   }, [sessions]);
 
-  // stats === null ise kayıt henüz oluşturuluyor demektir, loading göster
-  if (!ready || stats === undefined || stats === null || allProgress === undefined || allContent === undefined) {
+  if (!ready || stats === null) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
