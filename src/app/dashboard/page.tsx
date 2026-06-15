@@ -6,9 +6,10 @@ import { Brain, BookOpen, Flame, Star, Target, TrendingUp, ChevronRight, Clock, 
 import { db, getOrCreateUserStats, type UserStats, type StudySession } from "@/lib/db";
 import { seedIfEmpty } from "@/lib/seedDb";
 import { xpProgressPercent, xpForLevel, BADGES } from "@/lib/gamification";
-import { fetchSession } from "@/lib/auth";
+import { useAuth } from "@/components/features/AuthProvider";
 
 export default function DashboardPage() {
+  const { loading: authLoading } = useAuth();
   const [ready, setReady] = useState(false);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [contentCount, setContentCount] = useState(0);
@@ -16,19 +17,15 @@ export default function DashboardPage() {
   const [dueCount, setDueCount] = useState(0);
 
   useEffect(() => {
+    if (authLoading) return; // Auth hazır olana kadar bekle
+    
     let mounted = true;
     
     async function loadData() {
-      // Önce kullanıcı oturumunu al
-      let user = await fetchSession();
-      let attempts = 0;
-      while (!user && attempts < 3) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        user = await fetchSession();
-        attempts++;
-      }
+      // Kısa bekleme - db proxy hazır olsun
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      if (!mounted || !user) return;
+      if (!mounted) return;
       
       // Veritabanı hazırla
       await getOrCreateUserStats();
@@ -58,7 +55,7 @@ export default function DashboardPage() {
     loadData();
     
     return () => { mounted = false; };
-  }, []);
+  }, [authLoading]);
 
   if (!ready || stats === null) {
     return (
