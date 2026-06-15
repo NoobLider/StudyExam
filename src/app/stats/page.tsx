@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -10,7 +10,17 @@ import { Flame, Star, CalendarCheck, TrendingUp } from "lucide-react";
 import { db, getOrCreateUserStats } from "@/lib/db";
 
 export default function StatsPage() {
-  useEffect(() => { getOrCreateUserStats(); }, []);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      await getOrCreateUserStats();
+      if (mounted) setReady(true);
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   const stats = useLiveQuery(() => db.userStats.toArray().then((arr) => arr[0] ?? null), []);
   const allProgress = useLiveQuery(() => db.progress.toArray(), []);
   const allContent = useLiveQuery(() => db.content.toArray(), []);
@@ -29,7 +39,7 @@ export default function StatsPage() {
     return days;
   }, [sessions]);
 
-  if (stats === undefined || allProgress === undefined || allContent === undefined) {
+  if (!ready || stats === undefined || allProgress === undefined || allContent === undefined) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />

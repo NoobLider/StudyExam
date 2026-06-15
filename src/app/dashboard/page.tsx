@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Brain, BookOpen, Flame, Star, Target, TrendingUp, ChevronRight, Clock, CalendarCheck } from "lucide-react";
@@ -9,9 +9,16 @@ import { seedIfEmpty } from "@/lib/seedDb";
 import { xpProgressPercent, xpForLevel, BADGES } from "@/lib/gamification";
 
 export default function DashboardPage() {
+  const [ready, setReady] = useState(false);
+
   useEffect(() => {
-    getOrCreateUserStats();
-    seedIfEmpty();
+    let mounted = true;
+    (async () => {
+      await getOrCreateUserStats();
+      await seedIfEmpty();
+      if (mounted) setReady(true);
+    })();
+    return () => { mounted = false; };
   }, []);
 
   const stats = useLiveQuery(() => db.userStats.toArray().then((arr) => arr[0] ?? null), []);
@@ -25,7 +32,7 @@ export default function DashboardPage() {
     []
   );
 
-  if (stats === undefined) {
+  if (!ready || stats === undefined) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />

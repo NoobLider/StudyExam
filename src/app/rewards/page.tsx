@@ -1,16 +1,26 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Lock } from "lucide-react";
 import { db, getOrCreateUserStats } from "@/lib/db";
 import { BADGES, xpProgressPercent, xpForLevel, LEVEL_THRESHOLDS } from "@/lib/gamification";
 
 export default function RewardsPage() {
-  useEffect(() => { getOrCreateUserStats(); }, []);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      await getOrCreateUserStats();
+      if (mounted) setReady(true);
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   const stats = useLiveQuery(() => db.userStats.toArray().then((arr) => arr[0] ?? null), []);
 
-  if (stats === undefined) {
+  if (!ready || stats === undefined) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
